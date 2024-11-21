@@ -19,9 +19,10 @@ with open("name_city.txt", "a", encoding="utf-8") as file:
     for link in links:
         href = link['href']
 
-        if href.startswith('/Погода'):
-            city_name = href.split('/')[-1]  # Получаем последнюю часть пути
-            file.write(city_name + "\n")      # Записываем в файл с переводом строки
+        if href.startswith('/'):
+            city_name = href.split('/Погода_в_')[-1]  
+            print(city_name)
+            file.write(city_name + "\n")
             print(city_name)
 
 
