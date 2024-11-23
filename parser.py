@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service)
 
-# Открываем страницу
 url = "https://rp5.ru/Погода_в_России"
 driver.get(url)
 
