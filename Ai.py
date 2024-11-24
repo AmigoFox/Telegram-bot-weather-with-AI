@@ -43,7 +43,7 @@ y = name_city['city']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=400)
 
 # Обучение модели
-model = LogisticRegression(max_iter=10000)
+model = LogisticRegression(max_iter=15000)
 model.fit(X_train, y_train)
 
 # Векторизация введенного запроса
