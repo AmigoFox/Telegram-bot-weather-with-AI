@@ -4,59 +4,57 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+import re
 from sklearn.metrics import accuracy_score
 
-# Загружаем модель spaCy для обработки русского языка
+# Загрузка модели spacy для русского языка
 nlp = spacy.load("ru_core_news_lg")
 
-# Загружаем данные с названиями городов
+
+# Загрузка данных о городах
 name_city = pd.read_csv("A:/Language-processor/name_city_extended.csv")
 name_city.columns = name_city.columns.str.strip().str.lower()
 
-# Вводим город для поиска погоды
+# Ввод города
 city = input("Погоду в каком городе хочешь посмотреть ?\n")
 
+# Лемматизация введенного запроса
+words = re.findall(r'\b\w+\b', city.lower())
+lemmas = []
 
+for word in words:
+    doc = nlp(word)
+    if doc:
+        lemma = doc[0].lemma_
+        lemmas.append(lemma)
 
-doc = nlp(city)
-doc_lemma = doc[0].lemma_
-print(doc_lemma)# Используем lemma_
+# Преобразуем леммы в строку для векторизации
+info = " ".join(lemmas)
 
-
-# Преобразуем лемму введённого города в массив
-info = np.array([doc_lemma])
-
-# Преобразуем введённый город в DataFrame
-info_df = pd.DataFrame(info.T, columns=['city'])
-
-# Убираем пробелы и лишние символы из данных
+# Предобработка данных городов для модели
 name_city['city'] = name_city['city'].str.strip()
-
-# Создаем объект TfidfVectorizer для векторизации текста
 vectorizer = TfidfVectorizer()
 
-# Преобразуем названия городов в векторы с помощью TF-IDF
+# Векторизация названий городов
 X = vectorizer.fit_transform(name_city['city'])
-
-# Целевая переменная - это города, в которых будем искать сходства
 y = name_city['city']
 
-# Разделим данные на обучающие и тестовые наборы для тренировки модели
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=1)
+# Разделение данных на обучающую и тестовую выборки
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=400)
 
-# Обучаем модель логистической регрессии
-model = LogisticRegression(max_iter=1411)
+# Обучение модели
+model = LogisticRegression(max_iter=10000)
 model.fit(X_train, y_train)
 
-# Преобразуем вводимый город в тот же векторный формат
-info_vectorized = vectorizer.transform(info_df['city'])
+# Векторизация введенного запроса
+info_vectorized = vectorizer.transform([info])
 
-# Предсказываем город
+# Прогнозирование города
 predicted_city = model.predict(info_vectorized)
 
-# Выводим результат
+# Вывод предсказанного города
 print(f"Это предсказанный город: {predicted_city[0]}")
 
-# Проверка точности модели (по тестовым данным)
+# Оценка точности модели
 y_pred = model.predict(X_test)
 print(f"Точность модели: {accuracy_score(y_test, y_pred)}")
