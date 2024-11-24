@@ -10,12 +10,21 @@ from sklearn.metrics import accuracy_score
 nlp = spacy.load("ru_core_news_lg")
 
 # Загружаем данные с названиями городов
-name_city = pd.read_csv("A:/Language-processor/name_city.csv")
-name_city.columns = name_city.columns.str.strip().str.lower()  # Очистим лишние пробелы
+name_city = pd.read_csv("A:/Language-processor/name_city_extended.csv")
+name_city.columns = name_city.columns.str.strip().str.lower()
 
 # Вводим город для поиска погоды
 city = input("Погоду в каком городе хочешь посмотреть ?\n")
-info = np.array([city])
+
+
+
+doc = nlp(city)
+doc_lemma = doc[0].lemma_
+print(doc_lemma)# Используем lemma_
+
+
+# Преобразуем лемму введённого города в массив
+info = np.array([doc_lemma])
 
 # Преобразуем введённый город в DataFrame
 info_df = pd.DataFrame(info.T, columns=['city'])
@@ -33,10 +42,10 @@ X = vectorizer.fit_transform(name_city['city'])
 y = name_city['city']
 
 # Разделим данные на обучающие и тестовые наборы для тренировки модели
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=1)
 
 # Обучаем модель логистической регрессии
-model = LogisticRegression(max_iter=1000)
+model = LogisticRegression(max_iter=1411)
 model.fit(X_train, y_train)
 
 # Преобразуем вводимый город в тот же векторный формат
