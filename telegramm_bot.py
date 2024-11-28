@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import logging
+import threading
 from typing import Any
 from aiogram.handlers import MessageHandler
 from dotenv import load_dotenv
@@ -11,10 +12,16 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from pyexpat.errors import messages
+import sqlite3
 
 load_dotenv("bot.env")
 TOKEN = os.getenv("BOT_TOKEN")
 logging.basicConfig(level=logging.INFO)
+
+CON = "weather_report.db"
+
+
+
 
 if TOKEN is None:
     print("Ошибка: BOT_TOKEN не найден в .env файле")
@@ -36,9 +43,25 @@ async def main() -> None:
 @dp.message()
 async def log_message(message: Message):
        if not message.from_user.is_bot:  # Проверяем, что сообщение не от бота
-           print(f"Получено сообщение: {message.text} от пользователя {message.from_user.id}")
+            print(message.text)
+            add_query(CON, message.text)
        else:
-           print(f"Получено сообщение от бота: {message.text}")
+             print(f"Получено сообщение от бота: {message.text}")
+
+
+
+def add_query(db_file, query):
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO report (weather) VALUES (?)", (query,))
+        conn.commit()
+        return cursor.lastrowid
+    except sqlite3.Error as e:
+        print(f"Ошибка при добавлении запроса: {e}")
+    finally:
+        conn.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
