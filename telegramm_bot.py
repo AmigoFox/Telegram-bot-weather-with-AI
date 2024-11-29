@@ -18,7 +18,7 @@ load_dotenv("bot.env")
 TOKEN = os.getenv("BOT_TOKEN")
 logging.basicConfig(level=logging.INFO)
 
-CON = "weather_report.db"
+CON = "BD.db"
 
 
 
@@ -44,17 +44,17 @@ async def main() -> None:
 async def log_message(message: Message):
        if not message.from_user.is_bot:  # Проверяем, что сообщение не от бота
             print(message.text)
-            add_query(CON, message.text)
+            add_query(CON, message.text, message.from_user.id)
        else:
              print(f"Получено сообщение от бота: {message.text}")
 
 
 
-def add_query(db_file, query):
+def add_query(db_file, query, id_user):
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO report (weather) VALUES (?)", (query,))
+        cursor.execute("INSERT INTO info_weather (text, id_user) VALUES (?, ?)", (query, id_user))
         conn.commit()
         return cursor.lastrowid
     except sqlite3.Error as e:
