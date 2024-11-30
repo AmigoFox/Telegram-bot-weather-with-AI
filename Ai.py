@@ -8,34 +8,39 @@ import re
 from sklearn.metrics import accuracy_score
 import sqlite3
 
-from torchgen.api.cpp import return_type
+class WeatherQuery:
+    def __init__(self, id, text, user_id):
+        self.id = id
+        self.text = text
+        self.user_id = user_id
 
-
-def get_query_info(id, text, id_user):
-    conn = sqlite3.connect('BD.db') # Подключение к базе данных
+def get_all_query(id, text, id_user):
+    conn = sqlite3.connect('BD.db')
     cursor = conn.cursor()
 
     try:
-        cursor.execute("SELECT * FROM info_weather WHERE id = ?", (id, text, id_user,))  # Запрос к БД
-        query_data = cursor.fetchone()
-        if query_data:
-            return {
-                "id": query_data[0],
-                "text": query_data[1],
-                "id_user": query_data[2],
-            }
-        else:
-            return None
+        cursor.execute("SELECT * FROM info_weather")
+        rows = cursor.fetchall()
+        queries = [WeatherQuery(row[0], row[1], row[2]) for row in rows]
+        return queries
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
         return None
     finally:
         conn.close()
 
+all_queries = get_all_query('id','text','id_user')
+
+
+if all_queries:
+    for query in all_queries:
+        text_to_process = query.text
+        print(query.id,text_to_process,query.user_id)
+else:
+    print("Ошибка при получении данных из базы данных.")
 
 nlp = spacy.load("ru_core_news_lg")
-
-
+'''
 name_city = pd.read_csv("A:/Language-processor/name_city_extended.csv")
 name_city.columns = name_city.columns.str.strip().str.lower()
 name_city['city'] = name_city['city'].str.strip()
@@ -74,3 +79,4 @@ print(f"Это предсказанный город: {predicted_city[0]}")
 
 y_pred = model.predict(X_test)
 print(f"Точность модели: {accuracy_score(y_test, y_pred)}")
+'''
