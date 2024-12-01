@@ -14,7 +14,7 @@ class WeatherQuery:
         self.text = text
         self.user_id = user_id
 
-def get_all_query(id, text, id_user):
+def get_all_query():
     conn = sqlite3.connect('BD.db')
     cursor = conn.cursor()
 
@@ -29,18 +29,22 @@ def get_all_query(id, text, id_user):
     finally:
         conn.close()
 
-all_queries = get_all_query('id','text','id_user')
+all_queries = get_all_query()
 
-
+text_city = []
 if all_queries:
     for query in all_queries:
         text_to_process = query.text
-        print(query.id,text_to_process,query.user_id)
+        print(query.id, text_to_process, query.user_id)
+        text_city.append(text_to_process)
 else:
     print("Ошибка при получении данных из базы данных.")
+print(text_city)
+
 
 nlp = spacy.load("ru_core_news_lg")
-'''
+
+
 name_city = pd.read_csv("A:/Language-processor/name_city_extended.csv")
 name_city.columns = name_city.columns.str.strip().str.lower()
 name_city['city'] = name_city['city'].str.strip()
@@ -57,26 +61,37 @@ def preprocess_text(text):
     return " ".join(words)
 
 
-city = preprocess_text(input("Погоду в каком городе хочешь посмотреть ?\n"))
-words = re.findall(r'\b\w+\b', city.lower())
-lemmas = [nlp(word)[0].lemma_ for word in words]
+def process_queries(queries):
+    processed_queries = []
+    for query in queries:
+        processed_text = preprocess_text(query)
+        print(f"Предобработанный текст: {processed_text}")
 
-info = " ".join(lemmas)
 
-vectorizer = TfidfVectorizer(ngram_range=(1, 2), max_features=5000)
-X = vectorizer.fit_transform(name_city['city'])
-y = name_city['city']
+        doc = nlp(processed_text)
+        lemmas = [token.lemma_ for token in doc]
+        processed_queries.append(" ".join(lemmas))
+    return processed_queries
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=400)
 
-model = LogisticRegression(max_iter=1500, C=3.0, solver='liblinear')
-model.fit(X_train, y_train)
+def Ai_report(info):
+    vectorizer = TfidfVectorizer(ngram_range=(1, 2), max_features=5000)
+    X = vectorizer.fit_transform(name_city['city'])
+    y = name_city['city']
 
-info_vectorized = vectorizer.transform([info])
-predicted_city = model.predict(info_vectorized)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=400)
 
-print(f"Это предсказанный город: {predicted_city[0]}")
+    model = LogisticRegression(max_iter=1500, C=3.0, solver='liblinear')
+    model.fit(X_train, y_train)
 
-y_pred = model.predict(X_test)
-print(f"Точность модели: {accuracy_score(y_test, y_pred)}")
-'''
+    info_vectorized = vectorizer.transform([info])
+    predicted_city = model.predict(info_vectorized)
+
+    print(f"Это предсказанный город: {predicted_city[0]}")
+    y_pred = model.predict(X_test)
+
+    print(f"Точность модели: {accuracy_score(y_test, y_pred)}")
+
+processed_queries = process_queries(text_city)
+for query in processed_queries:
+    Ai_report(query)
