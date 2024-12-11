@@ -20,13 +20,9 @@ logging.basicConfig(level=logging.INFO)
 
 CON = "BD.db"
 
-
-
-
 if TOKEN is None:
     print("Ошибка: BOT_TOKEN не найден в .env файле")
     sys.exit(1)
-
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(bot=bot)
@@ -47,7 +43,6 @@ async def log_message(message: Message):
             add_query(CON, message.text, message.from_user.id)
        else:
              print(f"Получено сообщение от бота: {message.text}")
-
 
 
 def add_query(db_file, query, id_user):
