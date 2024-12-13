@@ -7,6 +7,9 @@ import re
 from sklearn.metrics import accuracy_score
 import sqlite3
 
+
+nlp = spacy.load("ru_core_news_lg")
+
 class WeatherQuery:
     def __init__(self, id, text, user_id):
         self.id = id
@@ -48,8 +51,6 @@ print(text_city)
 for item in text_city:
     print(item['text'])
 
-nlp = spacy.load("ru_core_news_lg")
-
 
 name_city = pd.read_csv("A:/Language-processor/name_city_extended.csv")
 name_city.columns = name_city.columns.str.strip().str.lower()
@@ -61,7 +62,7 @@ stop_words = {"какая", "погода", "погодy", "в", "для", "в �
 
 def preprocess_text(text):
     text = text.lower()
-    text = re.sub(r'[^a-zа-яё ]', '', text)  # Удаляем все неалфавитные символы
+    text = re.sub(r'[^a-zа-яё ]', '', text)
     words = text.split()
     words = [word for word in words if word not in stop_words]
     return " ".join(words)
@@ -101,10 +102,11 @@ def Ai_report(id, text, id_user):
     print(f"Это предсказанный город: {id, predicted_city[0], id_user}")
     y_pred = model.predict(X_test)
     print(f"Точность модели: {accuracy_score(y_test, y_pred)}")
-    cursor.execute('''
+    cursor.execute(
+        '''
         INSERT INTO report (id, text, id_user) 
         VALUES (?, ?, ?)
-        ''', (id, predicted_city[0], id_user))#примерно что выдаст "Это предсказанный город: (5, 'Орёл', 1324077143)"
+            ''', (id, predicted_city[0], id_user))
     conn_req.commit()
     conn_req.close()
 

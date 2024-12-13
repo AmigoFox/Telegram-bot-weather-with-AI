@@ -1,5 +1,4 @@
 import sqlite3
-
 import requests
 import os
 from dotenv import load_dotenv
@@ -54,7 +53,6 @@ for i in text_city:
 
 
 
-'''
 def get_weather(city, api_key):
     url = f'https://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&lang=ru'
     response = requests.get(url)
@@ -74,7 +72,6 @@ def get_weather_future(city, api_key):
     response = requests.get(url)
     data = response.json()
 
-    # Создаем список для хранения прогнозов
     forecast_info = []
 
     for day in data['forecast']['forecastday']:
@@ -83,7 +80,6 @@ def get_weather_future(city, api_key):
         condition = day['day']['condition']['text']
         forecast_info.append(f"Дата: {date}, Температура: {temp_c}°C, Описание: {condition}")
 
-    # Возвращаем все прогнозы в виде строки
     return "\n".join(forecast_info)
 
 if __name__ == "__main__":
@@ -95,4 +91,3 @@ api_key = API_KEY
 city = 'Ростов-на-Дону'
 print(get_weather(city, api_key))
 print(get_weather_future(city, api_key))
-'''
