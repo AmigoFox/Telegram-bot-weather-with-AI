@@ -47,11 +47,6 @@ if all_queries:
 else:
     print("Ошибка при получении данных из базы данных.")
 
-for i in text_city:
-    print(i['id'],i['text'],i['id_user'])
-
-
-
 
 def get_weather(city, api_key):
     url = f'https://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&lang=ru'
@@ -68,6 +63,9 @@ def get_weather(city, api_key):
 
 
 def get_weather_future(city, api_key):
+    conn = sqlite3.connect("weather_request.db")
+    cursor = conn.cursor()
+
     url = f"http://api.weatherapi.com/v1/forecast.json?key={api_key}&q={city}&days=7&lang=ru"
     response = requests.get(url)
     data = response.json()
@@ -79,6 +77,14 @@ def get_weather_future(city, api_key):
         temp_c = day['day']['avgtemp_c']
         condition = day['day']['condition']['text']
         forecast_info.append(f"Дата: {date}, Температура: {temp_c}°C, Описание: {condition}")
+        cursor.execute(
+            '''
+            INSERT INTO report (weather_description) 
+            VALUES (?)
+                ''',(f"Дата: {date}, Температура: {temp_c}°C, Описание: {condition}"))
+        conn.commit()
+        conn.close()
+
 
     return "\n".join(forecast_info)
 
@@ -88,6 +94,9 @@ if __name__ == "__main__":
     get_weather(city, api_key)
 
 api_key = API_KEY
-city = 'Ростов-на-Дону'
-print(get_weather(city, api_key))
-print(get_weather_future(city, api_key))
+
+for i in text_city:
+    print(i['id'],i['text'],i['id_user'])
+    city = i['text']
+    print(get_weather(city, api_key))
+    print(get_weather_future(city, api_key))
