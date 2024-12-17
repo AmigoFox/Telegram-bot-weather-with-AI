@@ -1,9 +1,6 @@
 import asyncio
 import sys
 import logging
-import threading
-from typing import Any
-from aiogram.handlers import MessageHandler
 from dotenv import load_dotenv
 import os
 from aiogram import Bot, Dispatcher, html
@@ -11,7 +8,6 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message
-from pyexpat.errors import messages
 import sqlite3
 
 load_dotenv("bot.env")
