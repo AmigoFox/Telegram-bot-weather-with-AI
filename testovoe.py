@@ -12,22 +12,22 @@ if 'Unnamed: 0' in data.columns:
 
 data = pd.get_dummies(data, columns=['city', 'vacation_preference', 'transport_preference', 'target'])
 
-target_columns = [col for col in data.columns if col.startswith('target_')]
+target_columns = [col for col in data.columns if col.startswith('target')]
 X = data.drop(target_columns, axis=1)
 y = data[target_columns]
 
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=49)
 
 model = RandomForestClassifier()
 model.fit(X_train, y_train)
 
-salary = 83000
-city = "Томск"
-age = 49
-why_pref = "Архитектура"
-transport = "Автомобиль"
-family = 2
+salary = 230000
+city = "Москва"
+age = 62
+why_pref = "Пляжный отдых"
+transport = "Космический корабль"
+family = 1
 
 input_data = pd.DataFrame({
     'salary': [salary],
@@ -47,7 +47,11 @@ for column in X.columns:
 input_data = input_data[X.columns]
 
 y_pred = model.predict(input_data)
-
+y_pred_test = model.predict(X_test)
 target_names = [col.split('_')[1] for col in target_columns]
 predicted_city = target_names[np.argmax(y_pred)]
+
+accuracy = accuracy_score(y_test.values.argmax(axis=1), y_pred_test.argmax(axis=1))
+
 print("Предсказание города:", predicted_city)
+print(f"Точность модели: {accuracy:.2f}")

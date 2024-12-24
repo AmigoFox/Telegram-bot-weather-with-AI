@@ -1,23 +1,66 @@
-import spacy
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-import re
-from sklearn.metrics import accuracy_score
 import sqlite3
-import time  # Для создания паузы
+import time
+import spacy
+from g4f.client import Client as G4FClient
+from g4f import models
+import re
+import asyncio
+from datetime import datetime
+import pandas as pd
+from io import StringIO
+import sys
 
+# Устанавливаем политику событийного цикла для Windows
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 nlp = spacy.load("ru_core_news_lg")
+pd.set_option('display.max_colwidth', None)
 
+def send_request(text, prompt, model):
+    try:
+        client = G4FClient()
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f'{prompt}\n{text}'
+                }
+            ]
+        )
+        return {'result': response.choices[0].message.content}
+    except Exception as e:
+        return {'error': str(e)}
+
+def answer(text: str, prompt: str, model: str = 'gpt-4o', limit: int = 60, timeout: int = 100) -> str:
+    result = send_request(text, prompt, model)
+
+    if 'error' in result:
+        print(f"Ошибка при обработке запроса: {result['error']}")
+        return None
+
+    res = result['result']
+    clear_text = re.sub(r"[A-Za-z]", "", res)
+    clear_text = re.sub(r'\s+', ' ', clear_text.strip())
+
+    if len(clear_text) > limit:
+        res = res.strip()
+        index = res.find('.ai')
+
+        if index > 0:
+            res = res[index + 3:]
+            return res
+        else:
+            return res
+    else:
+        return None
 
 class WeatherQuery:
     def __init__(self, id, text, user_id):
         self.id = id
         self.text = text
         self.user_id = user_id
-
 
 def get_all_query():
     conn = sqlite3.connect('BD.db')
@@ -33,76 +76,8 @@ def get_all_query():
     finally:
         conn.close()
 
-
-name_city = pd.read_csv("A:/Language-processor/name_city_extended.csv")
-name_city.columns = name_city.columns.str.strip().str.lower()
-name_city['city'] = name_city['city'].str.strip()
-
-cities_with_hyphens = ["Ростов-на-Дону", "Нижний-Новгород", "Санкт-Петербург","Ак-Довурак",'Горно-Алтайск','Калач-на-Дону']
-
-
-stop_words = {"какая", "погода", "погодy", "в", "для", "в каком", "когда", "по", "что", "город", "это", "вопрос", "на", "вопросе"}
-
-
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-zа-яё\- ]', '', text)  # Добавляем дефис в регулярное выражение
-    words = text.split()
-    words = [word for word in words if word not in stop_words]
-    return " ".join(words)
-
-def process_queries(queries):
-    processed_queries = []
-    for query in queries:
-        processed_text = preprocess_text(query['text'])
-        print(f"Предобработанный текст: {processed_text}")
-
-        # Лемматизация с учетом городов
-        doc = nlp(processed_text)
-        lemmas = []
-        for token in doc:
-            if token.text in cities_with_hyphens:
-                lemmas.append(token.text)
-            else:
-                lemmas.append(token.lemma_)
-
-        processed_queries.append({
-            'id': query['id'],
-            'text': " ".join(lemmas),
-            'id_user': query['id_user']
-        })
-    return processed_queries
-
-# Функция для предсказания города и сохранения результата в базу данных
-def Ai_report(id, text, id_user):
-    conn_req = sqlite3.connect("weather_request.db")
-    cursor = conn_req.cursor()
-    vectorizer = TfidfVectorizer(ngram_range=(1, 2), max_features=5000)
-    X = vectorizer.fit_transform(name_city['city'])
-    y = name_city['city']
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=400)
-
-    model = LogisticRegression(max_iter=1500, C=3.0, solver='liblinear')
-    model.fit(X_train, y_train)
-
-    info_vectorized = vectorizer.transform([text])
-    predicted_city = model.predict(info_vectorized)
-
-    print(f"Это предсказанный город: {id, predicted_city[0], id_user}")
-    y_pred = model.predict(X_test)
-    print(f"Точность модели: {accuracy_score(y_test, y_pred)}")
-    cursor.execute(
-        '''
-        INSERT INTO report (id, text, id_user) 
-        VALUES (?, ?, ?)
-            ''', (id, predicted_city[0], id_user))
-    conn_req.commit()
-    conn_req.close()
-
-# Основной цикл с зацикливанием
 def main():
-    while True:  # Бесконечный цикл
+    while True:
         all_queries = get_all_query()
         text_city = []
 
@@ -111,7 +86,7 @@ def main():
                 query_id = query.id
                 text_to_process = query.text
                 user_id = query.user_id
-                print(query.id, text_to_process, query.user_id)
+                print(f"Обрабатываем запрос для города: {text_to_process}, пользователь: {user_id}")
                 text_city.append({
                     'id': query_id,
                     'text': text_to_process,
@@ -120,27 +95,43 @@ def main():
         else:
             print("Ошибка при получении данных из базы данных.")
 
-        # Обработка запросов
-        processed_queries = process_queries(text_city)
-        for query in processed_queries:
-            Ai_report(query['id'], query['text'], query['id_user'])
+        if all_queries:
+            for query in all_queries:
+                print(f'вот вот это {query} вот запос ')
+                if __name__ == '__main__':
+                    result = answer(
+                        prompt= 'Напиши название города в России. Оно может быть неформальное или в виде аббревиатуры. Ответь только названием города в официальном виде. Если не знаешь - ответь 0',
+                        text= query.text,
+                        limit= 1
+                    )
+                    if result is not None:
+                        conn_req = sqlite3.connect("weather_request.db")
+                        cursor = conn_req.cursor()
+                        cursor.execute(
+                            '''
+                            INSERT INTO report (text, id_user) 
+                            VALUES (?, ?)
+                                ''', (result, query.user_id))  # Добавляем id_user
+                        conn_req.commit()
+                        conn_req.close()
+                        print(f"Результат '{result}' добавлен в базу данных для запроса с ID {query.id}.")
 
-        # Удаляем обработанные запросы из базы данных
-        conn = sqlite3.connect('BD.db')
-        cursor = conn.cursor()
-        try:
-            cursor.execute("DELETE FROM info_weather")
-            conn.commit()
-            print("Обработанные запросы удалены из базы данных.")
-        except sqlite3.Error as e:
-            print(f"Ошибка при удалении запросов: {e}")
-        finally:
-            conn.close()
+                        # Удаляем запрос из базы данных BD.db
+                        conn_bd = sqlite3.connect("BD.db")
+                        cursor_bd = conn_bd.cursor()
+                        try:
+                            cursor_bd.execute("DELETE FROM info_weather WHERE id = ?", (query.id,))
+                            conn_bd.commit()
+                            print(f"Запрос с ID {query.id} удален из базы данных BD.db.")
+                        except sqlite3.Error as e:
+                            print(f"Ошибка при удалении запроса из базы данных BD.db: {e}")
+                        finally:
+                            conn_bd.close()
+                    else:
+                        print(f"Результат для запроса с ID {query.id} не получен.")
 
-        # Пауза перед следующей проверкой базы данных
-        print("Ожидание 10 секунд перед следующим запуском...")
-        time.sleep(2)
+        print("Ожидание 5 секунд перед следующим запуском...")
+        time.sleep(1)
 
-# Запуск
 if __name__ == "__main__":
     main()

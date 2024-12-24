@@ -7,7 +7,6 @@ from aiogram.enums import ParseMode
 import sqlite3
 import asyncio
 
-# Загрузка переменных окружения
 load_dotenv("API_KEY_waeth.env")
 API_KEY = os.getenv("API_KEY")
 api_key = API_KEY
@@ -17,14 +16,67 @@ TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(bot=bot)
 
-# Класс для хранения данных запроса
+
 class WeatherQuery:
     def __init__(self, id, text, user_id):
         self.id = id
         self.text = text
         self.user_id = user_id
 
-# Функция для получения всех запросов из базы данных
+def get_weather_future(city, api_key):
+    info_weather = ''
+    url = f"http://api.weatherapi.com/v1/forecast.json?key={api_key}&q={city}&days=4&lang=ru"
+    response = requests.get(url)
+    data = response.json()
+
+    if 'error' in data:
+        return f"Ошибка API: {data['error']['message']}"
+
+    today_date = data['forecast']['forecastday'][0]['date']
+    temp = data['current']['temp_c']
+    humidity = data['current'].get('humidity', 'Н/Д')
+    wind_speed = data['current']['wind_kph']
+    condition = data['current']['condition']['text']
+    info_weather += f'Погода в городе {city} на сегодняшний день {today_date}: Температура: {temp}°C, Влажность: {humidity}%, Скорость ветра: {wind_speed} км/ч, Описание: {condition}\n'
+    info_weather += '\n'
+
+    forecast_day = data['forecast']['forecastday'][0]
+    info_weather += f"Почасовой прогноз погоды в городе {city} на {today_date}:\n"
+    for i, hour in enumerate(forecast_day['hour']):
+        if i % 7 == 0:
+            time = hour['time']
+            temp_c = hour.get('temp_c', 'Н/Д')
+            wind_kph = hour.get('wind_kph', 'Н/Д')
+            condition = hour['condition']['text']
+            info_weather += f"Время: {time}, Температура: {temp_c}°C, Скорость ветра: {wind_kph} км/ч, Описание: {condition}\n"
+            info_weather += ' '
+        info_weather += ' '
+
+    info_weather += ' '
+    if 'forecast' in data:
+        for day in data['forecast']['forecastday']:
+            date = day['date']
+            temp_humidity = day['day'].get('avghumidity', 'Н/Д')
+            temp_c = day['day'].get('avgtemp_c', 'Н/Д')
+            condition = day['day']['condition']['text']
+            wind_speed = day['day'].get('maxwind_kph', 'Н/Д')
+            info_weather += f"Дата: {date}, Температура: {temp_c}°C, Влажность: {temp_humidity}%, Скорость ветра: {wind_speed} км/ч, Описание: {condition}\n"
+            info_weather += '\n'
+    else:
+        info_weather += "Прогноз на несколько дней недоступен.\n"
+    print(info_weather)
+
+    return info_weather
+
+
+async def send_message_to_user(user_id: int, message_text: str):
+    try:
+        await bot.send_message(chat_id=user_id, text=message_text)
+        print(f"Сообщение отправлено пользователю {user_id}")
+    except Exception as e:
+        print(f"Ошибка при отправке сообщения: {e}")
+
+
 async def get_all_query():
     conn = sqlite3.connect("weather_request.db")
     cursor = conn.cursor()
@@ -39,46 +91,6 @@ async def get_all_query():
     finally:
         conn.close()
 
-# Функция для получения погоды
-def get_weather_future(city, api_key):
-    info_weather = ''
-    url = f"http://api.weatherapi.com/v1/forecast.json?key={api_key}&q={city}&days=7&lang=ru"
-    response = requests.get(url)
-    data = response.json()
-
-    if 'error' in data:
-        return f"Ошибка API: {data['error']['message']}"
-    today_date = data['forecast']['forecastday'][0]['date']
-    temp = data['current']['temp_c']
-    humidity = data['current']['humidity']
-    wind_speed = data['current']['wind_kph']
-    condition = data['current']['condition']['text']
-    info_weather += f'Погода на сегодняшний день {today_date}: Температура: {temp}°C, Влажность: {humidity}%, Скорость ветра: {wind_speed} км/ч, Описание: {condition}\n'
-    info_weather += '\n'
-
-    if 'forecast' in data:
-        for day in data['forecast']['forecastday']:
-            date = day['date']
-            humidity = data['current']['humidity']
-            temp_c = day['day']['avgtemp_c']
-            condition = day['day']['condition']['text']
-            wind_speed = day['day']['maxwind_kph']
-            info_weather += f"Дата: {date}, Температура: {temp_c}°C, Влажность: {humidity}%, Скорость ветра: {wind_speed} км/ч, Описание: {condition}\n"
-            info_weather += '\n'
-    else:
-        info_weather += "Прогноз на несколько дней недоступен.\n"
-        print(info_weather)
-    return info_weather
-
-# Асинхронная функция для отправки сообщения пользователю
-async def send_message_to_user(user_id: int, message_text: str):
-    try:
-        await bot.send_message(chat_id=user_id, text=message_text)
-        print(f"Сообщение отправлено пользователю {user_id}")
-    except Exception as e:
-        print(f"Ошибка при отправке сообщения: {e}")
-
-# Основная асинхронная функция
 async def main():
     while True:
         all_queries = await get_all_query()
@@ -88,13 +100,20 @@ async def main():
                 user_id = query.user_id
                 print(f"Обрабатываем запрос для города: {city}, пользователь: {user_id}")
 
-                # Получаем погоду
+                if user_id is None:
+                    print(f"Пропущен запрос с ID {query.id}, так как user_id отсутствует.")
+                    continue
+
+
                 weather_info = get_weather_future(city, api_key)
 
-                # Отправляем погоду пользователю
-                await send_message_to_user(user_id, weather_info)
+                try:
+                    await send_message_to_user(int(user_id), weather_info)
+                    print(f"Сообщение отправлено пользователю {user_id}")
+                except Exception as e:
+                    print(f"Ошибка при отправке сообщения пользователю {user_id}: {e}")
+                    continue
 
-                # Удаляем обработанный запрос из базы данных
                 conn = sqlite3.connect("weather_request.db")
                 cursor = conn.cursor()
                 try:
@@ -106,7 +125,7 @@ async def main():
                 finally:
                     conn.close()
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
 if __name__ == "__main__":
     asyncio.run(main())
