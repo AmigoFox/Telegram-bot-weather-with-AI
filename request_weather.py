@@ -41,7 +41,7 @@ def get_weather_future(city, api_key):
     info_weather += '\n'
 
     forecast_day = data['forecast']['forecastday'][0]
-    info_weather += f"Почасовой прогноз погоды в городе {city} на {today_date}:\n"
+    info_weather += f"Почасовой прогноз на {today_date} \n"
     for i, hour in enumerate(forecast_day['hour']):
         if i % 7 == 0:
             time = hour['time']
@@ -49,23 +49,24 @@ def get_weather_future(city, api_key):
             wind_kph = hour.get('wind_kph', 'Н/Д')
             condition = hour['condition']['text']
             info_weather += f"Время: {time}, Температура: {temp_c}°C, Скорость ветра: {wind_kph} км/ч, Описание: {condition}\n"
-            info_weather += ' '
-        info_weather += ' '
-
-    info_weather += ' '
-    if 'forecast' in data:
-        for day in data['forecast']['forecastday']:
-            date = day['date']
-            temp_humidity = day['day'].get('avghumidity', 'Н/Д')
-            temp_c = day['day'].get('avgtemp_c', 'Н/Д')
-            condition = day['day']['condition']['text']
-            wind_speed = day['day'].get('maxwind_kph', 'Н/Д')
-            info_weather += f"Дата: {date}, Температура: {temp_c}°C, Влажность: {temp_humidity}%, Скорость ветра: {wind_speed} км/ч, Описание: {condition}\n"
             info_weather += '\n'
+
+
+    if 'forecast' in data:
+        i = int(0)
+        for day in data['forecast']['forecastday']:
+            if i >= 1:
+                date = day['date']
+                temp_humidity = day['day'].get('avghumidity', 'Н/Д')
+                temp_c = day['day'].get('avgtemp_c', 'Н/Д')
+                condition = day['day']['condition']['text']
+                wind_speed = day['day'].get('maxwind_kph', 'Н/Д')
+                info_weather += f"Дата: {date}, Температура: {temp_c}°C, Влажность: {temp_humidity}%, Скорость ветра: {wind_speed} км/ч, Описание: {condition}\n"
+                info_weather += '\n'
+            i+=1
     else:
         info_weather += "Прогноз на несколько дней недоступен.\n"
     print(info_weather)
-
     return info_weather
 
 
