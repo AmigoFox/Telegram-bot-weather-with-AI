@@ -1,2 +1,1 @@
-# Language-processor
-this is an AI that can process text and give answers. It is needed for further training of AI in different functions
+это ИИ, который может обрабатывать текст и давать ответы. Он нужен для дальнейшего обучения ИИ различным функциям
